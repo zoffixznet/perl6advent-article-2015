@@ -1,0 +1,33 @@
+<pre style="background-color: transparent;font-family: &quot;Consolas&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, monospace;font-size: 13px;letter-spacing: 0.015em;line-height: 120%;padding: 0.5em;border: 1px solid #ccc;border-radius: 2px;background: #f0f0f0"><span class="k" style="color: #007020;font-weight: bold">use</span> <span class="n">Text::Markov</span>;
+
+<span class="k" style="color: #007020;font-weight: bold">my</span> ( <span class="nv" style="color: #bb60d5">$nick</span>, <span class="nv" style="color: #bb60d5">$channel</span> ) = <span class="s" style="color: #4070a0">'P6NotABot'</span>, <span class="s" style="color: #4070a0">'#perl6-recon'</span>;
+
+<span class="k" style="color: #007020;font-weight: bold">my</span> <span class="nv" style="color: #bb60d5">$mc</span> = <span class="n">Text::Markov</span>.<span class="nb" style="color: #007020">new</span>;
+/\<span class="n">S</span>/ <span class="o" style="color: #666">and</span> <span class="nv" style="color: #bb60d5">$mc</span>.<span class="n">feed</span>(<span class="nv" style="color: #bb60d5">$_</span>) <span class="k" style="color: #007020;font-weight: bold">for</span> <span class="s" style="color: #4070a0">'story.txt'</span>.<span class="nb" style="color: #007020">IO</span>.<span class="nb" style="color: #007020">lines</span>;
+
+<span class="n">await</span> <span class="n">IO::Socket::Async</span>.<span class="nb" style="color: #007020">connect</span>(<span class="s" style="color: #4070a0">'localhost'</span>, <span class="mi" style="color: #40a070">6667</span>).<span class="n">then</span>({
+    <span class="k" style="color: #007020;font-weight: bold">my</span> <span class="nv" style="color: #bb60d5">$sock</span> = .<span class="n">result</span>;
+    <span class="nv" style="color: #bb60d5">$sock</span>.<span class="nb" style="color: #007020">print</span>(<span class="s" style="color: #4070a0">qq:to/END/</span>
+<span class="s" style="color: #4070a0">        NICK $nick</span>
+<span class="s" style="color: #4070a0">        USER $nick $nick irc.freenode.net :Really not a bot</span>
+<span class="s" style="color: #4070a0">        JOIN $channel</span>
+<span class="s" style="color: #4070a0">        END</span>
+    );
+
+    <span class="n">Supply</span>.<span class="n">interval</span>( <span class="mi" style="color: #40a070">5</span> ).<span class="n">tap</span>({
+        <span class="n">spurt</span> <span class="s" style="color: #4070a0">'report.txt'</span>, <span class="s" style="color: #4070a0">"[{DateTime.now}] Still alive!\n"</span>, :<span class="n">append</span>;
+    });
+
+    <span class="n">react</span> {
+        <span class="n">whenever</span> <span class="nv" style="color: #bb60d5">$sock</span>.<span class="n">Supply</span> {
+            .<span class="nb" style="color: #007020">say</span>;
+            <span class="k" style="color: #007020;font-weight: bold">if</span> /^<span class="s" style="color: #4070a0">':'</span> <span class="s" style="color: #4070a0">&lt;-[:]&gt;</span>+ <span class="s" style="color: #4070a0">'PRIVMSG '</span> <span class="nv" style="color: #bb60d5">$channel</span> <span class="s" style="color: #4070a0">' :'</span> <span class="nv" style="color: #bb60d5">$&lt;said&gt;</span>=(.+)/ {
+                <span class="nv" style="color: #bb60d5">$mc</span>.<span class="n">feed</span>( ~<span class="nv" style="color: #bb60d5">$&lt;said&gt;</span> );
+                ~<span class="nv" style="color: #bb60d5">$&lt;said&gt;</span> ~~<span class="sr" style="color: #235388"> /$nick/</span> <span class="o" style="color: #666">and</span> <span class="nv" style="color: #bb60d5">$sock</span>.<span class="nb" style="color: #007020">print</span>(
+                    <span class="s" style="color: #4070a0">":$nick!~$nick@localhost PRIVMSG $channel "</span>
+                    ~ <span class="s" style="color: #4070a0">":{$mc.read.substr(0, 200)}\n"</span>
+                );
+            }
+        }
+    }
+});</pre>

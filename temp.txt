@@ -1,6 +1,8 @@
 use Text::Markov;
 
-my ( $nick, $channel, $mc ) = 'P6NotABot', '#perl6-recon', Text::Markov.new;
+my ( $nick, $channel ) = 'P6NotABot', '#perl6-recon';
+
+my $mc = Text::Markov.new;
 /\S/ and $mc.feed($_) for 'story.txt'.IO.lines;
 
 await IO::Socket::Async.connect('localhost', 6667).then({
